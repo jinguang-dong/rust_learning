@@ -1,0 +1,9 @@
+[development]
+address = "localhost"
+port = "8000"
+workers = 10
+
+[development.database]
+adapter = "post"
+db_name = "dev_development"
+pool = 5

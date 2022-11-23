@@ -1,40 +1,46 @@
-use serde::{Deserialize, Serialize};
+use std::{error::Error, ffi::OsStr, path::Path};
+
+use serde::Deserialize;
 use serde_json;
-use std::error::Error;
-use std::fs;
-use std::path::Path;
 use toml;
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Config {
-    development: Development,
-    database: Database,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Development {
-    address: String,
-    port: String,
-    workers: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
+#[derive(Deserialize, Debug)]
 struct Database {
     adapter: String,
     db_name: String,
     pool: u32,
 }
+#[allow(dead_code)]
+#[derive(Deserialize, Debug)]
+struct Development {
+    address: String,
+    port: String,
+    workers: u32,
+    database: Database,
+}
+#[allow(dead_code)]
+#[derive(Deserialize, Debug)]
+pub struct Config {
+    development: Development,
+}
 
 pub fn read_config(filepath: &Path) -> Result<Config, Box<dyn Error>> {
-    let data = fs::read_to_string(filepath).expect("Please give a json or toml configuration file");
-    if filepath.ends_with(".json") {
-        let parsed: Config = serde_json::from_str(&data).unwrap();
-        Some(parsed)
-    } else if filepath.ends_with(".toml") {
-        let parsed: Config = toml::from_str(&data).unwrap();
-        Some(parsed)
-    } else {
-        panic!("This format config file have not been supported yet");
+    println!("The file path is {:?}", filepath);
+    let data = std::fs::read_to_string(&filepath)?;
+    println!("toml data is {:#?}", data);
+    match filepath.extension().and_then(OsStr::to_str) {
+        Some("json") => {
+            let content = serde_json::from_str(&data)?;
+            Ok(content)
+        }
+        Some("toml") => {
+            let content = toml::from_str(&data)?;
+            Ok(content)
+        }
+        _ => Err(Box::from(
+            "Json and toml config type have not been spported",
+        )),
     }
 }
 
@@ -43,30 +49,47 @@ mod tests {
     use super::*;
 
     #[test]
-    fn json_check() {
-        let filepath = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("test")
+    fn test_json() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
             .join("test.json");
-        let parsed: Config = read_config(&filepath).unwrap();
-        assert_eq!(parsed.development.address, "localhost");
-        assert_eq!(parsed.development.port, "8080");
-        assert_eq!(parsed.development.workers, 4);
-        assert_eq!(parsed.database.adapter, "postgresql");
-        assert_eq!(parsed.database.db_name, "blog_development");
-        assert_eq!(parsed.database.pool, 5);
+
+        let content: Config = read_config(&path).unwrap();
+        assert_eq!(content.development.address, "localhost");
+        assert_eq!(content.development.port, "8000");
+        assert_eq!(content.development.workers, 4);
+        assert_eq!(content.development.database.adapter, "postgresql");
+        assert_eq!(content.development.database.db_name, "blog_development");
+        assert_eq!(content.development.database.pool, 5);
     }
 
     #[test]
-    fn toml_check() {
-        let filepath = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("test")
+    fn test_toml() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
             .join("test.toml");
-        let parsed: Config = read_config(&filepath).unwrap();
-        assert_eq!(parsed.development.address, "localhost");
-        assert_eq!(parsed.development.port, "8080");
-        assert_eq!(parsed.development.workers, 4);
-        assert_eq!(parsed.database.adapter, "postgresql");
-        assert_eq!(parsed.database.db_name, "blog_development");
-        assert_eq!(parsed.database.pool, 5);
+
+        let content = read_config(&path).unwrap();
+        assert_eq!(content.development.address, "localhost");
+        assert_eq!(content.development.port, "8000");
+        assert_eq!(content.development.workers, 4);
+        assert_eq!(content.development.database.adapter, "postgresql");
+        assert_eq!(content.development.database.db_name, "blog_development");
+        assert_eq!(content.development.database.pool, 5);
+    }
+
+    #[test]
+    fn test_toml2() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("test2.toml");
+
+        let content = read_config(&path).unwrap();
+        assert_eq!(content.development.address, "localhost");
+        assert_eq!(content.development.port, "8000");
+        assert_eq!(content.development.workers, 10);
+        assert_eq!(content.development.database.adapter, "post");
+        assert_eq!(content.development.database.db_name, "dev_development");
+        assert_eq!(content.development.database.pool, 5);
     }
 }
