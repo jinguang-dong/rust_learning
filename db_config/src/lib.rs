@@ -28,7 +28,7 @@ pub struct Config {
 pub fn read_config(filepath: &Path) -> Result<Config, Box<dyn Error>> {
     println!("The file path is {:?}", filepath);
     let data = std::fs::read_to_string(&filepath)?;
-    println!("toml data is {:#?}", data);
+    println!("original data is {:#?}", data);
     match filepath.extension().and_then(OsStr::to_str) {
         Some("json") => {
             let content = serde_json::from_str(&data)?;
